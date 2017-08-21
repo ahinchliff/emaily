@@ -68,6 +68,40 @@ app.listen(PORT);
 
 **Deployment Steps**
 
+1 - Commit project to git
+```
+$ git init
+$ git add .
+$ git commit -m "initial commit"
+```
 
+2 - Create a new Heroku app which will return two links. The first the live app url and the second the remote repo to sync the local git repo with. 
+```
+$ heroku create
+```
+
+3 - Register a remote repo called `heroku` using remote repo url. 
+```
+$ git remote add heroku https://git.heroku.com/arcane-ravine-96878.git
+```
+
+4 - Deloy the application to Heroku
+```
+$ git push heroku master
+```
+
+***Additional Deployments***
+
+1 - Commit all changes to git
+
+```
+$ git add .
+$ git commit -m "changes"
+```
+
+2 - Push changes to Heroku
+```
+$ git push heroku master
+```
 
 
