@@ -23,7 +23,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-require('./routes/routes')(app);
+require('./routes')(app);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static('client/build'));
