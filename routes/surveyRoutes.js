@@ -1,3 +1,6 @@
+const _ = require('lodash');
+const Path = require('path-parser');
+const { URL  } = require('url');
 const mongoose = require('mongoose');
 const Survey = mongoose.model('surveys');
 const requireLogin = require('../middlewares/requireLogin');
@@ -8,13 +11,43 @@ const surveyTemplate = require('../services/emailTemplates/surveyTemplate');
 
 module.exports = app => {
 
-  app.get('/api/surveys/thanks', (req, res) => {
+  app.get('/api/surveys/:surveyId/:choice', (req, res) => {
     res.send('Thanks for voting :)')
-  })
+  });
+
+  app.post('/api/surveys/webhooks', (req, res) => {
+    const p = new Path('/api/surveys/:surveyId/:choice');
+    
+    _.chain(req.body)
+      .map(({ email, url }) => {
+        const match = p.test(new URL(url).pathname);
+        if (match) {
+          return { email, surveyId: match.surveyId, choice: match.choice }
+        }
+      })
+      .compact()
+      .uniqBy('email', 'surveyId')
+      .each(({ surveyId, email, choice }) => {
+        Survey.updateOne({
+          _id: surveyId,
+          recipients: {
+            $elemMatch: { email: email, responded: false }
+          }
+        }, {
+          $inc: { [choice]: 1 },
+          lastResponded: new Date(),
+          $set: { 'recipients.$.responded': true }
+        }).exec();
+      })
+      .value();
+
+    res.send({});
+  });
 
   app.post('/api/surveys', requireLogin, requireCredits, async (req, res) => {
     
     const { title, subject, body } = req.body;
+
     const recipients = req.body.recipients.split(',').map(email => email.trim());
 
     const survey = new Survey({
@@ -26,7 +59,12 @@ module.exports = app => {
       dateSent: Date.now()
     });
 
-    const mailer = new Mailer(title, subject, recipients, 'noreply@emaily.com', surveyTemplate(body));
+    const emailContent = {
+      body: survey.body,
+      surveyId: survey.id 
+    }
+
+    const mailer = new Mailer(title, subject, recipients, 'noreply@emaily.com', surveyTemplate(emailContent));
     
     try {
       await mailer.send();
